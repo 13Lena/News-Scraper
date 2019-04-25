@@ -6,82 +6,104 @@ var cheerio = require("cheerio");
 // Require Mongoose for schema and querying
 var mongoose = require("mongoose");
 
-module.exports = function(app) {
+module.exports = function (app) {
     // Scrape data from Medical News Today, load HTML into $, create record in the mongodb db
-    app.get("/scrape", function(req, res) {
+    app.get("/scrape", function (req, res) {
+        console.log('scrapping')
 
         // Using Axios, request womens health news from `medicalnewstoday.com`
-        axios.get("https://www.medicalnewstoday.com/categories/womens_health").then(function(response) {
+        axios.get("https://www.medicalnewstoday.com/categories/womens_health").then(function (response) {
 
-        // Load the html body from axios into cheerio
-        var $ = cheerio.load(response.data);
-
-        async function getData(i, element) {
-            var result = {};
-
-            // Build result object with: title, link, image link and date
-            // the $ is a jquery selector wrapper that allows jquery operations on the raw DOM object
-            result.title = $(element).children("a").attr("title");
-
-            var count = await db.Article.estimatedDocumentCount({"title": {$eq: result.title}}).exec();
-            if (count > 0) {
-                return true;
-            }
-
-            result.link = $(element).children("a").attr("href");
-
-            // MUST GO to expanded article page to get Summary text
-            await axios.get("https://www.medicalnewstoday.com" + result.link).then(async function(response) {
-
+            // Load the html body from axios into cheerio
             var $ = cheerio.load(response.data);
-            result.summary = $(".article_body").children("[itemprop='articleBody']").children("header").text();
 
-            // Create a new Article using "result" object
-            await db.Article.create(result ,function(err, dbArticle) {
-                if (err) {
-                    console.log(err);
-                } else {
-                    console.log(dbArticle);
+            async function getData(i, element) {
+                // Load the html body from axios into cheerio
+                var $ = cheerio.load(element);
+                console.log(`getData(${i})`)
+                var result = {};
+
+                // Build result object with: title, link, image link and date
+                // the $ is a jquery selector wrapper that allows jquery operations on the raw DOM object
+                result.title = $(element).children("a").attr("title");
+
+                var count = await db.Article.estimatedDocumentCount({
+                    "title": {
+                        $eq: result.title
+                    }
+                }).exec();
+                if (count > 0) {
+                    return true;
                 }
+
+                result.link = $(element).children("a").attr("href");
+                console.log('Our result is ', JSON.stringify(result))
+
+                // MUST GO to expanded article page to get Summary text
+                const response = await axios.get("https://www.medicalnewstoday.com" + result.link)
+
+                var $ = cheerio.load(response.data);
+                result.summary = $(".article_body").children("[itemprop='articleBody']").children("header").text();
+                console.log('Going to be creating for the article')
+                // Create a new Article using "result" object
+                await db.Article.create(result, function (err, dbArticle) {
+                    console.log('Saving the article')
+                    if (err) {
+                        console.warn(err);
+                    } else {
+                        console.log(dbArticle);
+                    }
+                });
+
+            } // end getData function
+
+            const knowledgeQuery = ".headlines_split .writtens_top .knowledge";
+            const knowledgeHeaders = $(knowledgeQuery);
+            if (knowledgeHeaders.length == 0) {
+                console.error("Could not find anything to scrape for ", knowledgeQuery);
+            }
+            const threads = Array.from(knowledgeHeaders).map(function ( e, i) {
+                return getData(i, e);
             });
 
-        }); // end axios.get
+            // Wait for all requests to complete
+            Promise.all(threads).then(function (promises) {
 
-    } // end getData function
-
-    const threads = [];
-    $(".listing").children().each(function (i, e) {
-        threads[i] = getData(i, e);
-    });
-
-    // Wait for all requests to complete
-    Promise.all(threads).then(function (promises) {
-
-        // Get all articles from the db server side
-        db.Article.find(/*{ saved: { $eq: false } }*/).sort({date: 'desc'})
-        .then(function(dbArticle) {
-            // If article(s) found, send back to client side
-            res.render("index", { newsFeed : dbArticle });
-        })
-        .catch(function(err) {
-            // If an error occurred, send it to the client
-            res.json(err);
+                // Get all articles from the db server side
+                db.Article.find( /*{ saved: { $eq: false } }*/ ).sort({
+                        date: 'desc'
+                    })
+                    .then(function (dbArticle) {
+                        // If article(s) found, send back to client side
+                        res.render("index", {
+                            newsFeed: dbArticle
+                        });
+                    })
+                    .catch(function (err) {
+                        // If an error occurred, send it to the client
+                        res.json(err);
+                    });
+            });
         });
-    });
-  });
- }); // end app.get
+    }); // end app.get
 
     // GET ALL SAVED articles from db
-    app.get("/saved", function(req, res) {
-        db.Article.find( { saved: { $eq: true } } )
-        .then(function(dbArticle) {
-            // If articles successfully found, send back to client
-            res.render("saved", { newsFeed : dbArticle });
-        })
-        .catch(function(err) {
-            // If an error occurred, send it to the client
-            res.json(err);
-        });
+    app.get("/saved", function (req, res) {
+        db.Article.find({
+                saved: {
+                    $eq: true
+                }
+            })
+            .then(function (dbArticle) {
+                // If articles successfully found, send back to client
+                res.render("saved", {
+                    newsFeed: dbArticle
+                });
+            })
+            .catch(function (err) {
+                // If an error occurred, send it to the client
+                res.json(err);
+            });
     });
 
     // FYI - BELOW is the format for updating the saved field to "true"
@@ -98,38 +120,104 @@ module.exports = function(app) {
     // 2. clear any notes data associated with that article ID
 
     // REMOVE database newsScraper
-    app.get("/clear", function(req, res) {
+    app.get("/clear", function (req, res) {
         mongoose.connection.dropDatabase();
         res.send("Database dropped.");
     });
 
 
     // SAVE article - works for BOTH saving and unsaving
-    app.post("/save", function(req, res) {
+    app.post("/save", function (req, res) {
 
-        db.Article.updateOne( { _id: req.body.id }, {$set: {"saved": req.body.saved }})
-        .then(function(dbArticle) {
-            // If able to successfully update an Article, send it back to the client
-            res.json(dbArticle);
-        })
-        .catch(function(err) {
-            // If an error occurred, send it to the client
-            res.json(err);
-        });
+        db.Article.updateOne({
+                _id: req.body.id
+            }, {
+                $set: {
+                    "saved": req.body.saved
+                }
+            })
+            .then(function (dbArticle) {
+                // If able to successfully update an Article, send it back to the client
+                res.json(dbArticle);
+            })
+            .catch(function (err) {
+                // If an error occurred, send it to the client
+                res.json(err);
+            });
     });
 
 
     // SAVE/UPDATE Article's associated NOTE(s)
     // one article can have many notes
-    app.post("/notes/:id", function(req, res) {
+    app.post("/notes/:id", function (req, res) {
         // Create a new note and pass the req.body to the entry
         var result = {};
         result.body = req.body.body;
         result.article = req.params.id;
 
         db.Note.create(result)
+            .then(function (dbArticle) {
+                // If able to successfully update an Article, send it back to the client
+                res.json(dbArticle);
+            })
+            .catch(function (err) {
+                // If an error occurred, send it to the client
+                res.json(err);
+            });
+    });
+
+    // Delete a specific NOTE
+    app.post("/deleteNote/:id", function (req, res) {
+
+        db.Note.remove({
+                _id: req.params.id
+            })
+            .then(function () {
+                res.json(true);
+            })
+            .catch(function (err) {
+                res.json(err);
+            });
+    });
+
+    // GET specific Article by id, then populate with its note(s)
+    app.get("/articles/:id", function (req, res) {
+        // Using the id passed in the id parameter, query the db for matching id
+        db.Article.findOne({
+                _id: req.params.id
+            })
+            .then(function (dbArticle) {
+
+                // If successfully find an Article with the given id, send it back to the client side
+
+                db.Note.find({
+                        article: dbArticle._id
+                    })
+                    .then(function (notes) {
+
+                        var result = {};
+                        result.article = dbArticle;
+                        result.notes = notes;
+                        res.json(result);
+                    })
+                    .catch(function (err) {
+                        console.log(err);
+                        res.json(err);
+                    });
+            })
+            .catch(function (err) {
+                // If an error occurred, send it to the client
+                console.log(err);
+                res.json(err);
+            });
+    });
+
+    // Route for getting all Articles from the db
+    app.get("/articles", function(req, res) {
+        // Grab every document in the Articles collection
+        db.Article.find({})
         .then(function(dbArticle) {
-            // If able to successfully update an Article, send it back to the client
+            // If we were able to successfully find Articles, send them back to the client
             res.json(dbArticle);
         })
         .catch(function(err) {
@@ -138,53 +226,13 @@ module.exports = function(app) {
         });
     });
 
-    // Delete a specific NOTE
-    app.post("/deleteNote/:id", function(req, res) {
-
-        db.Note.remove({ _id: req.params.id})
-        .then(function() {
-            res.json(true);
-        })
-        .catch(function(err) {
-            res.json(err);
-        });
-    });
-
-    // GET specific Article by id, then populate with its note(s)
-    app.get("/articles/:id", function(req, res) {
-    // Using the id passed in the id parameter, query the db for matching id
-        db.Article.findOne({ _id: req.params.id })
-        .then(function(dbArticle) {
-
-            // If successfully find an Article with the given id, send it back to the client side
-
-            db.Note.find({article: dbArticle._id})
-            .then(function(notes) {
-
-                var result = {};
-                result.article = dbArticle;
-                result.notes = notes;
-                res.json(result);
-            })
-            .catch(function(err) {
-                console.log(err);
-                res.json(err);
-            });
-        })
-        .catch(function(err) {
-            // If an error occurred, send it to the client
-            console.log(err);
-            res.json(err);
-        });
-    });
-
     // Render Search Page
-    app.get("/search/", function(req, res) {
+    app.get("/search/", function (req, res) {
         res.render("search");
-      });
+    });
 
     // Using the user's search word, query db for articles whose title includes that word
-    app.get("/search/:word", function(req, res) {
+    app.get("/search/:word", function (req, res) {
 
         let searchword = req.params.word
         // To create index for a text search it should look like this:
@@ -194,16 +242,22 @@ module.exports = function(app) {
 
         // get articles that have "searchword" in their title
         // need to pass in variable that has the user's searchword
-        db.Article.find( { $text: { $search: searchword } } )
+        db.Article.find({
+                $text: {
+                    $search: searchword
+                }
+            })
 
-      .then(function(dbArticle) {
-            // If search is successful, send back articles that match search to client
-            res.render("partials/feed", { newsFeed : dbArticle });
-      })
-      .catch(function(err) {
-            // If an error occurred, send it to the client
-            res.json(err);
-      });
+            .then(function (dbArticle) {
+                // If search is successful, send back articles that match search to client
+                res.render("partials/feed", {
+                    newsFeed: dbArticle
+                });
+            })
+            .catch(function (err) {
+                // If an error occurred, send it to the client
+                res.json(err);
+            });
     });
 
 }; // end exports

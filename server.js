@@ -28,12 +28,12 @@ app.use(express.json());
 app.use(express.static("public"));
 
 // Setup Handlebars
-app.engine(
-  "handlebars",
-  exphbs({
-    defaultLayout: "main"
-  })
-  );
+// app.engine(
+//   "handlebars",
+//   exphbs({
+//     defaultLayout: "main"
+//   })
+//   );
   app.set("view engine", "handlebars");
 
   // Require routes
