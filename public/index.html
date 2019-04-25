@@ -4,15 +4,18 @@
 <head>
   <meta charset="UTF-8">
   <title>Scraping for Womens Health</title>
-
+  <!-- bootstrap --->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO"
+    crossorigin="anonymous">
+  <!-- custom css -->
+  <link rel="stylesheet" href="styles/styles.css">
 </head>
 
 <body>
   <!-- top navigation bar -->
-  <div class="topnav" id="myTopnav">
-    <a href="/" class="active">Nutriton Scraper</a>
+  <div class="navbar" id="myTopnav">
+    <a href="/" class="active">Women's Health Scraper</a>
     <a href="/scrape">Scrape Articles</a>
-    <a href="/saved">Saved Articles</a>
 
   </div>
 
@@ -21,14 +24,15 @@
     <!-- main content area -->
     <div class="row">
       <div class="col-md-12" id="home-page">
-        <h1>Nutrition News</h1>
-        <h5>scraped from Medical News Today</h5>
+        <h1>Women's Health Stories</h1>
+        <h4>scraped from Medical News Today</h4>
         <br>
         <br>
       </div>
 
       <div >
         <div id="newsFeed"></div>
+
 
         <!-- modal to input Notes for a scraped and saved Article -->
         <!-- <div class="container"> -->
@@ -71,8 +75,6 @@
 
 
   <!-- scripts -->
-  <script src="https://code.jquery.com/jquery-3.3.1.min.js"
-    integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js"
     integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous">
   </script>

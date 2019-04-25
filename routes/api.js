@@ -23,7 +23,7 @@ module.exports = function (app) {
                 console.log(`getData(${i})`)
                 var result = {};
 
-                // Build result object with: title, link, image link and date
+                // Build result object with: title, link, summary 
                 // the $ is a jquery selector wrapper that allows jquery operations on the raw DOM object
                 result.title = $(element).children("a").attr("title");
 
@@ -37,6 +37,9 @@ module.exports = function (app) {
                 }
 
                 result.link = $(element).children("a").attr("href");
+
+                result.summary = $('.headline > em').text()
+
                 console.log('Our result is ', JSON.stringify(result))
 
                 // MUST GO to expanded article page to get Summary text

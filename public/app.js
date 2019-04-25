@@ -2,7 +2,7 @@
 const newsFeedHtml = ({_id, imageSource, title, summary, link}) => `
 <div class="card flex-row flex-wrap">
   <div class="card-header border-0">
-    ${imageSource && `<img src="${imageSource}" alt="article image" class="img-rounded" width=200; height=150>`}
+    ${!imageSource ? '' :`<img src="${imageSource}" alt="article image" class="img-rounded" width=200; height=150>`}
   </div>
   <div class="card-block px-2">
     <h4 class="card-title">
@@ -24,7 +24,6 @@ const newsFeedHtml = ({_id, imageSource, title, summary, link}) => `
 const $ = window.$;
 // Grab the articles as a json
 $.getJSON("/articles", function(articles) {
-  debugger;
   articles.map(article => $('#newsFeed').append(newsFeedHtml(article)))
     
     // // Display the apropos information on the page

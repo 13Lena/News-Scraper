@@ -1,5 +1,12 @@
-<style>
-body { background-color: #F2F6D0 }
+
+body { background-color: aliceblue }
+* + * {
+  margin-top: 1.5em;
+}
+
+.navbar * + * {
+  margin-left: 1.5em;
+}
 #wrapper {
   width: 960px;
   margin-left: auto;
@@ -29,4 +36,3 @@ textarea {
   height: 200px;
   font-size: 18px;
 }
-</style>
